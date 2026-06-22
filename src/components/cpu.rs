@@ -1,6 +1,6 @@
 use crate::components::ram::RAM;
 
-const STARTING_ADDRESS: u16 = 0x200;
+pub const STARTING_ADDRESS: u16 = 0x200;
 pub struct ProgramCounter {
     address: u16, // memory address of subsequent instruction, goes from 0x000 to 0xFFF (..4095).
                   // Start is 0x200 = 2 * 16^2 + 0 * 16^2 + 0 * 16^0 = 512
@@ -84,7 +84,7 @@ impl ControlUnit {
     pub fn cycle(&mut self, ram: &RAM) {
         self.fetch(ram);
         self.decode();
-        //self.execute();
+        self.execute();
     }
 
     pub fn fetch(&mut self, ram: &RAM) {
