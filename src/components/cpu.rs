@@ -119,7 +119,7 @@ impl ControlUnit {
 
     pub fn fetch(&mut self, ram: &RAM) {
         let pc = self.program_counter.address as usize;
-        let opcode = (ram.code_segment[pc] as u16) << 8 | (ram.code_segment[pc + 1] as u16);
+        let opcode = (ram.memory[pc] as u16) << 8 | (ram.memory[pc + 1] as u16);
         self.instruction_register = Some(opcode);
 
         self.program_counter.increment();
@@ -354,7 +354,7 @@ impl ControlUnit {
     ) {
         registers[0xF] = 0;
         for row in 0..(n as usize) {
-            let sprite_byte = ram.code_segment[*index_register + row];
+            let sprite_byte = ram.memory[*index_register + row];
             let pixel_y = (registers[y] as usize % display.height) + row;
 
             if pixel_y >= display.height {
@@ -423,21 +423,21 @@ impl ControlUnit {
     }
 
     fn op_0xfx33(&self, x: usize, index_register: &usize, registers: &[u8; 16], ram: &mut RAM) {
-        ram.code_segment[*index_register] = registers[x] / 100;
-        ram.code_segment[*index_register + 1] = (registers[x] / 10) % 10;
-        ram.code_segment[*index_register + 2] = registers[x] % 10;
+        ram.memory[*index_register] = registers[x] / 100;
+        ram.memory[*index_register + 1] = (registers[x] / 10) % 10;
+        ram.memory[*index_register + 2] = registers[x] % 10;
     }
 
     fn op_0xfx55(&self, x: usize, index_register: &mut usize, registers: &[u8; 16], ram: &mut RAM) {
         for index in 0..=x {
-            ram.code_segment[*index_register] = registers[index];
+            ram.memory[*index_register] = registers[index];
             *index_register += 1;
         }
     }
 
     fn op_0xfx65(&self, x: usize, index_register: &mut usize, registers: &mut [u8; 16], ram: &RAM) {
         for index in 0..=x {
-            registers[index] = ram.code_segment[*index_register];
+            registers[index] = ram.memory[*index_register];
             *index_register += 1;
         }
     }

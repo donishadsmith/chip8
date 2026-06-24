@@ -31,7 +31,7 @@ impl<'a> VirtualMachine<'a> {
 
     pub fn controller(&mut self, cartridge: &Cartridge) {
         for index in 0..FONTSET.len() {
-            self.ram.code_segment[index] = FONTSET[index];
+            self.ram.memory[index] = FONTSET[index];
         }
 
         for (index, byte) in cartridge.buffer.iter().enumerate() {
@@ -40,14 +40,14 @@ impl<'a> VirtualMachine<'a> {
                 break;
             }
 
-            self.ram.code_segment[address as usize] = *byte;
+            self.ram.memory[address as usize] = *byte;
         }
     }
 
     //https://www.reddit.com/r/EmuDev/comments/1ev3ool/chip8_instructions_per_second/
-    const INSTRUCTIONS_PER_FRAME: u8 = 10;
+    const CYCLES_PER_FRAME: u8 = 10;
     pub fn process(&mut self) {
-        for _ in 0..Self::INSTRUCTIONS_PER_FRAME {
+        for _ in 0..Self::CYCLES_PER_FRAME {
             self.cpu.control_unit.cycle(
                 self.variant,
                 &mut self.ram,
