@@ -8,20 +8,20 @@ use crate::{
     fontset::FONTSET,
 };
 
-pub struct VirtualMachine<'a> {
+pub struct VirtualMachine {
     pub cpu: CPU,
     pub ram: RAM,
     pub display: Display,
     pub delay_timer: u8,
     pub sound_timer: u8,
-    pub variant: &'a str,
+    pub variant: &'static str,
 }
 
-impl<'a> VirtualMachine<'a> {
-    pub fn boot(variant: &'a str) -> Self {
+impl VirtualMachine {
+    pub fn boot(cartridge: Cartridge, variant: &'static str) -> Self {
         Self {
             cpu: CPU::start(),
-            ram: RAM::start(),
+            ram: Self::controller(cartridge),
             display: Display::on(),
             delay_timer: 0,
             sound_timer: 0,
@@ -29,9 +29,10 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
-    pub fn controller(&mut self, cartridge: &Cartridge) {
+    pub fn controller(cartridge: Cartridge) -> RAM {
+        let mut ram = RAM::start();
         for index in 0..FONTSET.len() {
-            self.ram.memory[index] = FONTSET[index];
+            ram.memory[index] = FONTSET[index];
         }
 
         for (index, byte) in cartridge.buffer.iter().enumerate() {
@@ -40,8 +41,10 @@ impl<'a> VirtualMachine<'a> {
                 break;
             }
 
-            self.ram.memory[address as usize] = *byte;
+            ram.memory[address as usize] = *byte;
         }
+
+        ram
     }
 
     //https://www.reddit.com/r/EmuDev/comments/1ev3ool/chip8_instructions_per_second/

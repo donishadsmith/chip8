@@ -1,24 +1,24 @@
+use crate::error_message;
+use std::path::PathBuf;
+
 // Each instruction has 4 hexedecimals, each 4 bits = 2 bytes
 pub struct Cartridge {
     pub buffer: [u8; 3584], // Max 4096 bytes of RAM in VM, first 512 bytes is for font + interpreter, pad with 0
-    pub variant: String,    // Will need a heap allocated string since &str will be outlived
 }
 
 impl Cartridge {
-    pub fn load() -> Result<Self, std::io::Error> {
-        let (rom_path, variant) = Self::terminal_reader()?;
+    pub fn load(filename: Option<PathBuf>) -> Result<Self, std::io::Error> {
+        let Some(rom_path) = filename else {
+            let file_error_msg = "Issue occured with file selection".to_string();
+
+            return Err(error_message(file_error_msg));
+        };
 
         // Only accept the standard extension
-        if !rom_path.ends_with(".ch8") {
-            let ext_msg = format!("ROM does not end in .ch8 extension: {rom_path}");
+        if rom_path.extension().and_then(|e| e.to_str()) != Some("ch8") {
+            let ext_msg = format!("ROM does not end in .ch8 extension: {:?}", rom_path);
 
-            return Err(Self::error_message(ext_msg));
-        }
-
-        if variant != "CHIP-8" && variant != "CHIP-48" {
-            let variant_msg = format!("Only CHIP-8 and CHIP-48 supported not {variant}.");
-
-            return Err(Self::error_message(variant_msg));
+            return Err(error_message(ext_msg));
         }
 
         let heap_buffer = std::fs::read(rom_path)?;
@@ -28,29 +28,12 @@ impl Cartridge {
                 heap_buffer.len()
             );
 
-            return Err(Self::error_message(buffer_msg));
+            return Err(error_message(buffer_msg));
         }
 
         Ok(Self {
             buffer: Self::to_stack(&heap_buffer),
-            variant,
         })
-    }
-
-    fn terminal_reader() -> Result<(String, String), std::io::Error> {
-        println!("Input path to ROM:");
-
-        let mut filename = String::new();
-        std::io::stdin().read_line(&mut filename)?;
-
-        println!("chip8 variant (CHIP-8 or CHIP-48):");
-        let mut variant = String::new();
-        std::io::stdin().read_line(&mut variant)?;
-
-        Ok((
-            filename.trim().to_string(),
-            variant.trim().to_string().to_uppercase(),
-        ))
     }
 
     fn to_stack(heap_buffer: &Vec<u8>) -> [u8; 3584] {
@@ -58,9 +41,5 @@ impl Cartridge {
         stack_buffer[..heap_buffer.len()].copy_from_slice(heap_buffer);
 
         stack_buffer
-    }
-
-    fn error_message(message: String) -> std::io::Error {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, message)
     }
 }
