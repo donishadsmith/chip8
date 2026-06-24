@@ -33,14 +33,14 @@ jobs:
 
       - name: Rename binary (Unix)
         if: matrix.runner != 'windows-latest'
-        run: mv target/release/castle_descent target/release/castle_descent-${{ matrix.target }}
+        run: mv target/release/chip8 target/release/chip8-${{ matrix.target }}
 
       - name: Rename binary (Windows)
         if: matrix.runner == 'windows-latest'
         shell: bash
-        run: mv target/release/castle_descent.exe target/release/castle_descent-${{ matrix.target }}${{ matrix.ext }}
+        run: mv target/release/chip8.exe target/release/chip8-${{ matrix.target }}${{ matrix.ext }}
 
       - name: Attach files to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2s
         with:
-          files: target/release/castle_descent-${{ matrix.target }}${{ matrix.ext }}
+          files: target/release/chip8-${{ matrix.target }}${{ matrix.ext }}
