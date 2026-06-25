@@ -15,7 +15,7 @@ impl Cartridge {
         };
 
         // Only accept the standard extension
-        if rom_path.extension().and_then(|e| e.to_str()) != Some("ch8") {
+        if rom_path.extension().and_then(|ext| ext.to_str()) != Some("ch8") {
             let ext_msg = format!("ROM does not end in .ch8 extension: {:?}", rom_path);
 
             return Err(error_message(ext_msg));

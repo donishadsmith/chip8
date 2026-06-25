@@ -9,7 +9,7 @@ mod fontset;
 mod utils;
 mod vm;
 
-use macroquad::prelude::*;
+use macroquad::{audio::load_sound_from_bytes, prelude::*};
 use rfd::FileDialog;
 use std::{
     path::PathBuf,
@@ -17,7 +17,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{components::cartridge::Cartridge, utils::get_key, vm::VirtualMachine};
+use crate::{
+    components::{audio::Audio, cartridge::Cartridge},
+    utils::get_key,
+    vm::VirtualMachine,
+};
 
 #[derive(PartialEq)]
 enum EmulatorState {
@@ -102,7 +106,13 @@ async fn main() -> Result<(), std::io::Error> {
                 if is_key_pressed(KeyCode::Enter) {
                     match Cartridge::load(file_dialog()) {
                         Ok(cartridge) => {
-                            vm = Some(VirtualMachine::boot(cartridge, variants[cursor]));
+                            let mut audio = Audio::start(441.0, 0.1, 44100);
+                            audio.beep = Some(
+                                load_sound_from_bytes(audio.wav_bytes.as_ref().unwrap())
+                                    .await
+                                    .unwrap(),
+                            );
+                            vm = Some(VirtualMachine::boot(cartridge, variants[cursor], audio));
                             emulator_state = EmulatorState::Active;
                         }
                         Err(e) => {
