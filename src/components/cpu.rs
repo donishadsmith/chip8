@@ -158,7 +158,10 @@ impl ControlUnit {
             match nibbles {
                 [0x0, 0x0, 0xE, 0x0] => self.op_0x00e0(display),
                 [0x0, 0x0, 0xE, 0xE] => self.op_0x00ee(ram),
-                [0x0, _, _, _] => {} // ignore
+                [0x0, _, _, _] => {
+                    // put formal return
+                    return;
+                } 
                 [0x1, _, _, _] => self.op_0x1nnn(nnn),
                 [0x2, _, _, _] => self.op_0x2nnn(nnn, ram),
                 [0x3, _, _, _] | [0x4, _, _, _] => {
