@@ -51,6 +51,16 @@ fn quit_emulator(emulator_state: &mut EmulatorState, default_state: EmulatorStat
     }
 }
 
+fn back_to_main(emulator_state: &mut EmulatorState, default_state: EmulatorState) {
+    if let Some(key) = get_key()
+        && key == KeyCode::Backspace
+    {
+        change_emulator_state(emulator_state, EmulatorState::Start);
+    } else {
+        change_emulator_state(emulator_state, default_state);
+    }
+}
+
 fn draw_highlight(choices: [&str; 2], cursor: &mut usize) {
     if is_key_pressed(KeyCode::Down) | is_key_pressed(KeyCode::S) {
         *cursor += 1;
@@ -72,12 +82,15 @@ fn draw_highlight(choices: [&str; 2], cursor: &mut usize) {
     }
 
     draw_text(
-        "Up (W/Up Arrow) | Down (S/Down Arrow) | Quit (Escape)",
-        screen_width() / 2.0 * 0.30,
+        "Up (W/Up Arrow) | Down (S/Down Arrow) | Quit (Escape) | Back to Main (Backspace)",
+        screen_width() / 2.0 * 0.13,
         screen_height() / 2.0 + choices.len() as f32 * 50.0,
-        24.0,
+        20.0,
         WHITE,
     );
+
+    let screen = get_screen_data();
+    screen.export_png("main.png");
 }
 
 pub fn error_message(message: String) -> std::io::Error {
@@ -132,6 +145,7 @@ async fn main() -> Result<(), std::io::Error> {
                 }
 
                 quit_emulator(&mut emulator_state, EmulatorState::Active);
+                back_to_main(&mut emulator_state, EmulatorState::Active);
             }
             EmulatorState::Quit => break,
         }
