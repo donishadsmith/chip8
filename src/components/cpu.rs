@@ -161,7 +161,7 @@ impl ControlUnit {
                 [0x0, _, _, _] => {
                     // put formal return
                     return;
-                } 
+                }
                 [0x1, _, _, _] => self.op_0x1nnn(nnn),
                 [0x2, _, _, _] => self.op_0x2nnn(nnn, ram),
                 [0x3, _, _, _] | [0x4, _, _, _] => {

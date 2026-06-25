@@ -46,8 +46,12 @@ fn change_emulator_state(emulator_state: &mut EmulatorState, state: EmulatorStat
 
 fn quit_emulator(emulator_state: &mut EmulatorState, default_state: EmulatorState) {
     if let Some(key) = get_key()
-        && key == KeyCode::Escape
+        && (key == KeyCode::Escape || key == KeyCode::Backspace)
     {
+        if key == KeyCode::Backspace {
+            return;
+        }
+
         change_emulator_state(emulator_state, EmulatorState::Quit);
     } else {
         change_emulator_state(emulator_state, default_state);
@@ -56,8 +60,12 @@ fn quit_emulator(emulator_state: &mut EmulatorState, default_state: EmulatorStat
 
 fn back_to_main(emulator_state: &mut EmulatorState, default_state: EmulatorState) {
     if let Some(key) = get_key()
-        && key == KeyCode::Backspace
+        && (key == KeyCode::Backspace || key == KeyCode::Escape)
     {
+        if key == KeyCode::Escape {
+            return;
+        }
+
         change_emulator_state(emulator_state, EmulatorState::Start);
     } else {
         change_emulator_state(emulator_state, default_state);
