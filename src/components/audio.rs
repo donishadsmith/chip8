@@ -9,7 +9,7 @@ pub struct Audio {
 }
 
 impl Audio {
-    pub fn start(frequency: f32, duration_seconds: f32, sample_rate: u32) -> Self {
+    pub fn start(sample_rate: u32, frequency: f32, duration: f32) -> Self {
         let wavspec = WavSpec {
             channels: 1,
             sample_rate,
@@ -17,11 +17,7 @@ impl Audio {
             sample_format: SampleFormat::Int,
         };
 
-        let samples_per_cycle = sample_rate as f32 / frequency;
-        let cycles = (sample_rate as f32 * duration_seconds / samples_per_cycle)
-            .round()
-            .max(1.0);
-        let n_samples = (cycles * samples_per_cycle).round() as usize;
+        let n_samples = (sample_rate as f32 * duration).round() as usize;
 
         let mut buffer = Vec::new();
         let mut writer = WavWriter::new(Cursor::new(&mut buffer), wavspec).unwrap();

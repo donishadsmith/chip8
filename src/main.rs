@@ -36,7 +36,7 @@ enum EmulatorState {
 fn file_dialog() -> Option<PathBuf> {
     FileDialog::new()
         .set_title("Select a CHIP-8 ROM file")
-        .set_directory("/")
+        .add_filter("CHIP-8 Files", &["ch8"])
         .pick_file()
 }
 
@@ -127,7 +127,7 @@ async fn main() -> Result<(), std::io::Error> {
                 if is_key_pressed(KeyCode::Enter) {
                     match Cartridge::load(file_dialog()) {
                         Ok(cartridge) => {
-                            let mut audio = Audio::start(441.0, 0.1, 44100);
+                            let mut audio = Audio::start(44100, 441.0, 0.1);
                             audio.beep = Some(
                                 load_sound_from_bytes(audio.wav_bytes.as_ref().unwrap())
                                     .await

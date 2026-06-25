@@ -14,13 +14,6 @@ impl Cartridge {
             return Err(error_message(file_error_msg));
         };
 
-        // Only accept the standard extension
-        if rom_path.extension().and_then(|ext| ext.to_str()) != Some("ch8") {
-            let ext_msg = format!("ROM does not end in .ch8 extension: {:?}", rom_path);
-
-            return Err(error_message(ext_msg));
-        }
-
         let heap_buffer = std::fs::read(rom_path)?;
         if heap_buffer.len() > 3584 || heap_buffer.len() < 2 {
             let buffer_msg = format!(
