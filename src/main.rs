@@ -2,7 +2,10 @@
  -https://github.com/ablakey/chip8/blob/master/src/chip8.rs
  -https://github.com/starrhorne/chip8-rust/
  -https://github.com/tendstofortytwo/chip8-rust/
+ -https://en.wikipedia.org/wiki/CHIP-8
 */
+
+#![windows_subsystem = "windows"]
 
 mod components;
 mod fontset;
@@ -88,9 +91,6 @@ fn draw_highlight(choices: [&str; 2], cursor: &mut usize) {
         20.0,
         WHITE,
     );
-
-    let screen = get_screen_data();
-    screen.export_png("main.png");
 }
 
 pub fn error_message(message: String) -> std::io::Error {
