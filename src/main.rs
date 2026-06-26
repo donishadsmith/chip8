@@ -16,9 +16,9 @@ use macroquad::{audio::load_sound_from_bytes, prelude::*};
 use rfd::FileDialog;
 use std::{
     path::PathBuf,
-    process,
     time::{Duration, Instant},
 };
+use strum::{EnumCount, EnumIter, IntoEnumIterator};
 
 use crate::{
     components::{audio::Audio, cartridge::Cartridge},
@@ -31,6 +31,28 @@ enum EmulatorState {
     Start,
     Quit,
     Active,
+}
+
+#[derive(EnumCount, EnumIter, PartialEq)]
+pub enum Variant {
+    CHIP8,
+    CHIP48,
+}
+
+impl Variant {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Variant::CHIP8 => "CHIP-8",
+            Variant::CHIP48 => "CHIP-48",
+        }
+    }
+
+    pub fn to_var(index: usize) -> Self {
+        match index {
+            0 => Variant::CHIP8,
+            _ => Variant::CHIP48,
+        }
+    }
 }
 
 fn file_dialog() -> Option<PathBuf> {
@@ -72,19 +94,19 @@ fn back_to_main(emulator_state: &mut EmulatorState, default_state: EmulatorState
     }
 }
 
-fn draw_highlight(choices: [&str; 2], cursor: &mut usize) {
+fn draw_highlight(cursor: &mut usize) {
     if is_key_pressed(KeyCode::Down) | is_key_pressed(KeyCode::S) {
         *cursor += 1;
-        *cursor = cursor.rem_euclid(choices.len());
+        *cursor = cursor.rem_euclid(Variant::iter().count());
     }
 
     if is_key_pressed(KeyCode::Up) | is_key_pressed(KeyCode::W) {
-        *cursor = (*cursor + choices.len() - 1) % choices.len();
+        *cursor = (*cursor + Variant::iter().count() - 1) % Variant::iter().count();
     }
 
-    for (index, text) in choices.iter().enumerate() {
+    for index in 0..Variant::iter().count() {
         draw_text(
-            text,
+            Variant::to_var(index).to_str(),
             screen_width() / 2.0 * 0.85,
             screen_height() / 2.0 * 0.80 + index as f32 * 50.0,
             40.0,
@@ -95,7 +117,7 @@ fn draw_highlight(choices: [&str; 2], cursor: &mut usize) {
     draw_text(
         "Up (W/Up Arrow) | Down (S/Down Arrow) | Quit (Escape) | Back to Main (Backspace)",
         screen_width() / 2.0 * 0.13,
-        screen_height() / 2.0 + choices.len() as f32 * 50.0,
+        screen_height() / 2.0 + Variant::iter().count() as f32 * 50.0,
         20.0,
         WHITE,
     );
@@ -108,7 +130,6 @@ pub fn error_message(message: String) -> std::io::Error {
 // https://github.com/not-fl3/macroquad/issues/749
 #[macroquad::main("CHIP-8")]
 async fn main() -> Result<(), std::io::Error> {
-    let variants = ["CHIP-8", "CHIP-48"];
     let mut cursor = 0usize;
     let mut emulator_state = EmulatorState::Start;
 
@@ -122,7 +143,7 @@ async fn main() -> Result<(), std::io::Error> {
 
         match emulator_state {
             EmulatorState::Start => {
-                draw_highlight(variants, &mut cursor);
+                draw_highlight(&mut cursor);
 
                 if is_key_pressed(KeyCode::Enter) {
                     match Cartridge::load(file_dialog()) {
@@ -133,12 +154,15 @@ async fn main() -> Result<(), std::io::Error> {
                                     .await
                                     .unwrap(),
                             );
-                            vm = Some(VirtualMachine::boot(cartridge, variants[cursor], audio));
+                            vm = Some(VirtualMachine::boot(
+                                cartridge,
+                                Variant::to_var(cursor),
+                                audio,
+                            ));
                             emulator_state = EmulatorState::Active;
                         }
                         Err(e) => {
                             eprintln!("{e}");
-                            process::exit(1);
                         }
                     }
                 } else {
@@ -149,7 +173,6 @@ async fn main() -> Result<(), std::io::Error> {
                 if let Some(vm) = vm.as_mut() {
                     vm.process();
                     vm.update_timers();
-                    vm.display.draw();
                 }
 
                 quit_emulator(&mut emulator_state, EmulatorState::Active);

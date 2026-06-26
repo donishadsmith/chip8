@@ -1,6 +1,8 @@
 use crate::{
+    Variant,
     components::{
         audio::Audio,
+        bus::Bus,
         cartridge::Cartridge,
         cpu::{CPU, STARTING_ROM_ADDRESS},
         display::Display,
@@ -11,19 +13,20 @@ use crate::{
 
 pub struct VirtualMachine {
     pub cpu: CPU,
-    pub ram: RAM,
-    pub display: Display,
+    pub bus: Bus,
     pub delay_timer: u8,
     pub audio: Audio,
-    pub variant: &'static str,
+    pub variant: Variant,
 }
 
 impl VirtualMachine {
-    pub fn boot(cartridge: Cartridge, variant: &'static str, audio: Audio) -> Self {
+    pub fn boot(cartridge: Cartridge, variant: Variant, audio: Audio) -> Self {
         Self {
             cpu: CPU::start(),
-            ram: Self::controller(cartridge),
-            display: Display::on(),
+            bus: Bus {
+                ram: Self::controller(cartridge),
+                display: Display::on(),
+            },
             delay_timer: 0,
             audio: audio,
             variant: variant,
@@ -53,15 +56,16 @@ impl VirtualMachine {
     pub fn process(&mut self) {
         for _ in 0..Self::CYCLES_PER_FRAME {
             self.cpu.control_unit.cycle(
-                self.variant,
-                &mut self.ram,
+                &self.variant,
+                &mut self.bus,
                 &mut self.cpu.index_register,
                 &mut self.cpu.registers,
                 &mut self.delay_timer,
                 &mut self.audio.sound_timer,
-                &mut self.display,
             );
         }
+
+        self.bus.display.draw();
     }
 
     pub fn update_timers(&mut self) {

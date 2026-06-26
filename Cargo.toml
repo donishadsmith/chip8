@@ -1,10 +1,11 @@
 [package]
 name = "chip8"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2024"
 
 [dependencies]
 hound = "3.0"
 macroquad = { version = "0.4", features = ["audio"] }
 spin_sleep = "1.0"
+strum = { version = "0.28", features = ["derive"] }
 rfd = "0.17"

@@ -1,7 +1,8 @@
 use macroquad::prelude::*;
 
 use crate::{
-    components::{display::Display, ram::RAM},
+    Variant,
+    components::bus::Bus,
     utils::{is_chip8_key_down, key_event_pressed_only},
 };
 
@@ -61,18 +62,18 @@ impl ControlUnit {
         }
     }
 
-    pub fn push(&mut self, address: u16, ram: &mut RAM) {
+    pub fn push(&mut self, address: u16, bus: &mut Bus) {
         let return_address = self.program_counter.call(address);
 
         let index = match self.stack_pointer {
             Some(mut index) => {
                 index = index + 1;
-                ram.stack[index] = return_address;
+                bus.ram.stack[index] = return_address;
                 index
             }
             None => {
                 let index = 0;
-                ram.stack[index] = return_address;
+                bus.ram.stack[index] = return_address;
                 index
             }
         };
@@ -80,8 +81,8 @@ impl ControlUnit {
         self.stack_pointer = Some(index);
     }
 
-    pub fn pop(&mut self, ram: &RAM) {
-        let return_address = ram.stack[self.stack_pointer.unwrap()];
+    pub fn pop(&mut self, bus: &Bus) {
+        let return_address = bus.ram.stack[self.stack_pointer.unwrap()];
         self.program_counter.jump(return_address);
 
         // Should never be None by the time pop is called
@@ -95,31 +96,29 @@ impl ControlUnit {
 
     pub fn cycle(
         &mut self,
-        variant: &str,
-        ram: &mut RAM,
+        variant: &Variant,
+        bus: &mut Bus,
         index_register: &mut usize,
         registers: &mut [u8; 16],
         delay_timer: &mut u8,
         sound_timer: &mut u8,
-        display: &mut Display,
     ) {
-        self.fetch(ram);
+        self.fetch(&bus);
         let nibbles = self.decode();
         self.execute(
             nibbles,
             variant,
-            ram,
+            bus,
             index_register,
             registers,
             delay_timer,
             sound_timer,
-            display,
         );
     }
 
-    pub fn fetch(&mut self, ram: &RAM) {
+    pub fn fetch(&mut self, bus: &Bus) {
         let pc = self.program_counter.address as usize;
-        let opcode = (ram.memory[pc] as u16) << 8 | (ram.memory[pc + 1] as u16);
+        let opcode = (bus.read(pc) as u16) << 8 | (bus.read(pc + 1) as u16);
         self.instruction_register = Some(opcode);
 
         self.program_counter.increment();
@@ -138,13 +137,12 @@ impl ControlUnit {
     pub fn execute(
         &mut self,
         nibbles: Option<[u8; 4]>,
-        variant: &str,
-        ram: &mut RAM,
+        variant: &Variant,
+        bus: &mut Bus,
         index_register: &mut usize,
         registers: &mut [u8; 16],
         delay_timer: &mut u8,
         sound_timer: &mut u8,
-        display: &mut Display,
     ) {
         if let Some(nibbles) = nibbles {
             let x = nibbles[1] as usize;
@@ -156,14 +154,14 @@ impl ControlUnit {
             let n = (opcode & 0x000F) as u8;
 
             match nibbles {
-                [0x0, 0x0, 0xE, 0x0] => self.op_0x00e0(display),
-                [0x0, 0x0, 0xE, 0xE] => self.op_0x00ee(ram),
+                [0x0, 0x0, 0xE, 0x0] => self.op_0x00e0(bus),
+                [0x0, 0x0, 0xE, 0xE] => self.op_0x00ee(bus),
                 [0x0, _, _, _] => {
                     // put formal return
                     return;
                 }
                 [0x1, _, _, _] => self.op_0x1nnn(nnn),
-                [0x2, _, _, _] => self.op_0x2nnn(nnn, ram),
+                [0x2, _, _, _] => self.op_0x2nnn(nnn, bus),
                 [0x3, _, _, _] | [0x4, _, _, _] => {
                     if nibbles[0] == 0x3 {
                         self.op_0x3xnn(x, nn, registers);
@@ -191,14 +189,14 @@ impl ControlUnit {
                 [0x9, _, _, 0x0] => self.op_0x9xy0(x, y, registers),
                 [0xA, _, _, _] => self.op_0xannn(nnn, index_register),
                 [0xB, _, _, _] => {
-                    if variant == "CHIP-8" {
+                    if *variant == Variant::CHIP8 {
                         self.op_0xbnnn(nnn, registers);
                     } else {
                         self.op_0xbxnn(x, nn, registers);
                     }
                 }
                 [0xC, _, _, _] => self.op_0xcxnn(x, nn, registers),
-                [0xD, _, _, _] => self.op_dxyn(x, y, n, registers, ram, index_register, display),
+                [0xD, _, _, _] => self.op_dxyn(x, y, n, registers, bus, index_register),
                 [0xE, _, 0x9, 0xE] => self.op_0xex9e(x, registers),
                 [0xE, _, 0xA, 0x1] => self.op_0xexa1(x, registers),
                 [0xF, _, 0x0, 0x7] => self.op_0xfx07(x, delay_timer, registers),
@@ -207,9 +205,9 @@ impl ControlUnit {
                 [0xF, _, 0x1, 0x8] => self.op_0xfx18(x, sound_timer, registers),
                 [0xF, _, 0x1, 0xE] => self.op_0xfx1e(x, index_register, registers),
                 [0xF, _, 0x2, 0x9] => self.op_0xfx29(x, index_register, registers),
-                [0xF, _, 0x3, 0x3] => self.op_0xfx33(x, index_register, registers, ram),
-                [0xF, _, 0x5, 0x5] => self.op_0xfx55(x, index_register, registers, ram),
-                [0xF, _, 0x6, 0x5] => self.op_0xfx65(x, index_register, registers, ram),
+                [0xF, _, 0x3, 0x3] => self.op_0xfx33(x, index_register, registers, bus),
+                [0xF, _, 0x5, 0x5] => self.op_0xfx55(x, index_register, registers, bus),
+                [0xF, _, 0x6, 0x5] => self.op_0xfx65(x, index_register, registers, bus),
                 _ => {}
             }
         }
@@ -224,20 +222,20 @@ impl ControlUnit {
         ]
     }
 
-    fn op_0x00ee(&mut self, ram: &RAM) {
-        self.pop(ram);
+    fn op_0x00ee(&mut self, bus: &Bus) {
+        self.pop(bus);
     }
 
-    fn op_0x00e0(&self, display: &mut Display) {
-        display.clear();
+    fn op_0x00e0(&self, bus: &mut Bus) {
+        bus.display.clear();
     }
 
     fn op_0x1nnn(&mut self, nnn: u16) {
         self.program_counter.jump(nnn as u16);
     }
 
-    fn op_0x2nnn(&mut self, nnn: u16, ram: &mut RAM) {
-        self.push(nnn as u16, ram);
+    fn op_0x2nnn(&mut self, nnn: u16, bus: &mut Bus) {
+        self.push(nnn as u16, bus);
     }
 
     fn op_0x3xnn(&mut self, x: usize, nn: u8, registers: &[u8; 16]) {
@@ -351,34 +349,33 @@ impl ControlUnit {
         y: usize,
         n: u8,
         registers: &mut [u8; 16],
-        ram: &RAM,
+        bus: &mut Bus,
         index_register: &usize,
-        display: &mut Display,
     ) {
         registers[0xF] = 0;
         for row in 0..(n as usize) {
-            let sprite_byte = ram.memory[*index_register + row];
-            let pixel_y = (registers[y] as usize % display.height) + row;
+            let sprite_byte = bus.read(*index_register + row);
+            let pixel_y = (registers[y] as usize % bus.display.height) + row;
 
-            if pixel_y >= display.height {
+            if pixel_y >= bus.display.height {
                 break;
             }
 
             for col in 0..8 {
-                let pixel_x = (registers[x] as usize % display.width) + col;
+                let pixel_x = (registers[x] as usize % bus.display.width) + col;
 
-                if pixel_x >= display.width {
+                if pixel_x >= bus.display.width {
                     break;
                 }
 
                 let pixel_on = (sprite_byte >> (7 - col)) & 1 == 1;
 
                 if pixel_on {
-                    if display.panel[pixel_y][pixel_x] {
+                    if bus.display.panel[pixel_y][pixel_x] {
                         registers[0xF] = 1;
-                        display.panel[pixel_y][pixel_x] = false;
+                        bus.display.panel[pixel_y][pixel_x] = false;
                     } else {
-                        display.panel[pixel_y][pixel_x] = true;
+                        bus.display.panel[pixel_y][pixel_x] = true;
                     }
                 }
             }
@@ -425,22 +422,22 @@ impl ControlUnit {
         *index_register = (registers[x] & 0x0F) as usize * 5;
     }
 
-    fn op_0xfx33(&self, x: usize, index_register: &usize, registers: &[u8; 16], ram: &mut RAM) {
-        ram.memory[*index_register] = registers[x] / 100;
-        ram.memory[*index_register + 1] = (registers[x] / 10) % 10;
-        ram.memory[*index_register + 2] = registers[x] % 10;
+    fn op_0xfx33(&self, x: usize, index_register: &usize, registers: &[u8; 16], bus: &mut Bus) {
+        bus.write(*index_register, registers[x] / 100);
+        bus.write(*index_register + 1, (registers[x] / 10) % 10);
+        bus.write(*index_register + 2, registers[x] % 10);
     }
 
-    fn op_0xfx55(&self, x: usize, index_register: &mut usize, registers: &[u8; 16], ram: &mut RAM) {
+    fn op_0xfx55(&self, x: usize, index_register: &mut usize, registers: &[u8; 16], bus: &mut Bus) {
         for index in 0..=x {
-            ram.memory[*index_register] = registers[index];
+            bus.write(*index_register, registers[index]);
             *index_register += 1;
         }
     }
 
-    fn op_0xfx65(&self, x: usize, index_register: &mut usize, registers: &mut [u8; 16], ram: &RAM) {
+    fn op_0xfx65(&self, x: usize, index_register: &mut usize, registers: &mut [u8; 16], bus: &Bus) {
         for index in 0..=x {
-            registers[index] = ram.memory[*index_register];
+            registers[index] = bus.read(*index_register);
             *index_register += 1;
         }
     }
